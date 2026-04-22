@@ -3,6 +3,7 @@ package libs
 import (
 	"HitokotoGo/entity"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -10,108 +11,138 @@ import (
 )
 
 func CheckSentences() bool {
-	SentencesUrl := os.Getenv("SENTENCES_URL")
-	log.Println("正在检查句子包")
-	log.Println("正在检查data文件夹")
-	if _, err := os.Stat("data"); os.IsNotExist(err) {
-		log.Println("data文件夹不存在,正在创建")
-		err := os.Mkdir("data", 0755)
+	const (
+		dataDir                    = "data"
+		sentencesDir               = "data/sentences"
+		versionFile                = "data/version.json"
+		categoriesFile             = "data/categories.json"
+		dirPerm        os.FileMode = 0755
+	)
+
+	ensureDir := func(path string) error {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			log.Printf("%s 不存在,正在创建", path)
+			if err := os.MkdirAll(path, dirPerm); err != nil {
+				return err
+			}
+			log.Printf("%s 创建成功", path)
+			return nil
+		} else if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	readRemoteVersion := func(url string) ([]byte, error) {
+		resp, err := http.Get(url)
 		if err != nil {
+			return nil, err
+		}
+		defer func(body io.ReadCloser) {
+			if closeErr := body.Close(); closeErr != nil {
+				log.Println("文件关闭失败")
+			}
+		}(resp.Body)
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		}
+
+		return io.ReadAll(resp.Body)
+	}
+
+	downloadAll := func(remoteVersion entity.V, sentencesURL string) bool {
+		if err := ensureDir(dataDir); err != nil {
 			log.Println("data文件夹创建失败,请检查权限")
 			return false
 		}
-		log.Println("data文件夹创建成功")
-	}
-	log.Println("句子包检查更新中")
-	// 检查文件是否存在
-	if _, err := os.Stat("data/version.json"); os.IsNotExist(err) {
-		log.Println("文件不存在")
-		// 执行下载或其他操作
-		err := DownloadFile("data/version.json", SentencesUrl+"/version.json")
-		if err != nil {
-			log.Println("文件下载失败,请检查权限")
+
+		if err := ensureDir(sentencesDir); err != nil {
+			log.Println("sentences文件夹创建失败,请检查权限")
 			return false
 		}
-	} else if err != nil {
-		log.Printf("检查文件失败: %v", err)
-	} else {
-		log.Println("文件存在")
-	}
-	versionLocal, err := os.ReadFile("data/version.json")
-	if err != nil {
-		log.Println("版本文件读取失败,请检查权限")
-		return false
-	}
-	categoriesLocal, err := os.ReadFile("data/categories.json")
-	if err != nil {
-		log.Println("版本文件读取失败,请检查权限")
-		return false
-	}
-	versionRemote, err := http.Get(SentencesUrl + "/version.json")
-	if err != nil {
-		log.Println("版本文件读取失败,请检查权限")
-		return false
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Println("文件关闭失败")
+
+		log.Println("开始下载分类文件")
+		if err := DownloadFile(categoriesFile, sentencesURL+remoteVersion.Categories.Path); err != nil {
+			log.Println("句子分类下载失败,请检查权限")
+			return false
 		}
-	}(versionRemote.Body)
-	versionRemoteBody, VersionRBodyerr := io.ReadAll(versionRemote.Body)
-	if VersionRBodyerr != nil {
-		log.Println("版本文件解析失败,请检查权限")
+
+		for _, sentence := range remoteVersion.Sentences {
+			log.Println("正在下载句子包: " + sentence.Path)
+			if err := DownloadFile(dataDir+"/"+sentence.Path, sentencesURL+sentence.Path); err != nil {
+				log.Println("句子包下载失败,请检查权限")
+				return false
+			}
+		}
+
+		if err := DownloadFile(versionFile, sentencesURL+"/version.json"); err != nil {
+			log.Println("版本文件更新失败,请检查权限")
+			return false
+		}
+
+		return true
 	}
 
-	var versionL entity.V
-	var versionR entity.V
-	var categories []entity.C
-	var VersionRerr = json.Unmarshal(versionRemoteBody, &versionR)
-	if VersionRerr != nil {
-		log.Println("版本文件解析失败,请检查权限")
-		return false
-	}
-	var versionLocalErr = json.Unmarshal(versionLocal, &versionL)
-	if versionLocalErr != nil {
-		log.Println("版本文件解析失败,请检查权限")
-		return false
-	}
-	log.Println("版本文件读取成功")
-	var categoriesLocalerr = json.Unmarshal(categoriesLocal, &categories)
-	if categoriesLocalerr != nil {
-		log.Println("分类文件解析失败,请检查权限")
-		return false
-	}
-	log.Println("版本文件解析成功")
-	log.Println("开始下载句子包")
+	sentencesURL := os.Getenv("SENTENCES_URL")
+	log.Println("正在检查句子包")
+	log.Println("正在检查data文件夹")
 
-	err = DownloadFile("./data/categories.json", SentencesUrl+versionL.Categories.Path)
+	versionRemoteBody, err := readRemoteVersion(sentencesURL + "/version.json")
 	if err != nil {
-		log.Println("句子分类下载失败,请检查权限")
+		log.Println("远程版本文件读取失败,请检查权限")
 		return false
 	}
-	if versionL.BundleVersion == versionR.BundleVersion || versionL.UpdatedAt == versionR.UpdatedAt {
+
+	var remoteVersion entity.V
+	if err := json.Unmarshal(versionRemoteBody, &remoteVersion); err != nil {
+		log.Println("远程版本文件解析失败,请检查权限")
+		return false
+	}
+
+	log.Println("远程版本文件读取成功")
+	log.Println("远程版本文件解析成功")
+
+	dataInfo, err := os.Stat(dataDir)
+	if os.IsNotExist(err) {
+		log.Println("data文件夹不存在,开始下载全部文件")
+		return downloadAll(remoteVersion, sentencesURL)
+	}
+	if err != nil {
+		log.Printf("data文件夹检查失败: %v", err)
+		return false
+	}
+	if !dataInfo.IsDir() {
+		log.Println("data路径不是文件夹")
+		return false
+	}
+
+	versionLocalBody, err := os.ReadFile(versionFile)
+	if os.IsNotExist(err) {
+		log.Println("version.json 不存在,开始下载全部文件")
+		return downloadAll(remoteVersion, sentencesURL)
+	}
+	if err != nil {
+		log.Println("版本文件读取失败,请检查权限")
+		return false
+	}
+
+	var localVersion entity.V
+	if err := json.Unmarshal(versionLocalBody, &localVersion); err != nil {
+		log.Println("本地版本文件解析失败,开始重新下载全部文件")
+		return downloadAll(remoteVersion, sentencesURL)
+	}
+
+	log.Println("本地版本文件读取成功")
+	log.Println("本地版本文件解析成功")
+
+	if localVersion.BundleVersion == remoteVersion.BundleVersion && localVersion.UpdatedAt == remoteVersion.UpdatedAt {
 		log.Println("句子包已是最新版本")
 		return true
 	}
-	for _, version := range versionL.Sentences {
-		log.Println("正在下载句子包: " + version.Path)
-		if _, err := os.Stat("./data/sentences"); os.IsNotExist(err) {
-			log.Println("sentences文件夹不存在,正在创建")
-			err := os.Mkdir("./data/sentences", 0755)
-			if err != nil {
-				log.Println("sentences文件夹创建失败,请检查权限")
-				return false
-			}
-			log.Println("sentences文件夹创建成功")
-		}
-		err := DownloadFile("./data/"+version.Path, SentencesUrl+version.Path)
-		if err != nil {
-			log.Println("句子包下载失败,请检查权限")
-			return false
-		}
-	}
-	return true
+
+	log.Println("本地版本与远程版本不一致,开始覆盖下载全部文件")
+	return downloadAll(remoteVersion, sentencesURL)
 }
 func DownloadFile(filepath string, url string) error {
 	resp, err := http.Get(url)
@@ -126,7 +157,7 @@ func DownloadFile(filepath string, url string) error {
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return err
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	out, err := os.Create(filepath)

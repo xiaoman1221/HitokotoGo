@@ -12,28 +12,29 @@ import (
 var ctx = context.Background()
 
 func CheckRedis() bool {
-	Addr := os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT")
-	log.Println("正在连接Redis服务: " + Addr)
-	Password := os.Getenv("REDIS_PASSWORD")
-	DB, err := strconv.Atoi(os.Getenv("REDIS_DB"))
+	host := os.Getenv("REDIS_HOST")
+	port := os.Getenv("REDIS_PORT")
+	password := os.Getenv("REDIS_PASSWORD")
+	dbStr := os.Getenv("REDIS_DB")
+
+	addr := host + ":" + port
+	log.Println("正在连接Redis服务: " + addr)
+
+	db, err := strconv.Atoi(dbStr)
 	if err != nil {
 		log.Fatalf("Redis数据库配置错误: %v", err)
 	}
+
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     Addr,
-		Password: Password,
-		DB:       DB,
+		Addr:     addr,
+		Password: password,
+		DB:       db,
 	})
-	defer func(rdb *redis.Client) {
-		err := rdb.Close()
-		if err != nil {
+	defer func() {
+		if err := rdb.Close(); err != nil {
 			log.Fatalf("Redis连接关闭失败: %v", err)
 		}
-	}(rdb)
+	}()
 
-	err = rdb.Ping(ctx).Err()
-	if err != nil {
-		return false
-	}
-	return true
+	return rdb.Ping(ctx).Err() == nil
 }
