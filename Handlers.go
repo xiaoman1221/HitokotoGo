@@ -23,7 +23,7 @@ const indexPageHTML = `<!DOCTYPE html>
 
 // indexHandler
 // 首页展示
-func indexHandler(w http.ResponseWriter) {
+func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if _, err := w.Write([]byte(indexPageHTML)); err != nil {
