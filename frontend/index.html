@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HitokotoGo</title>
+    <style>
+        :root {
+            --text-color: #ffffff;
+            --subtext-color: rgba(255, 255, 255, 0.82);
+            --panel-bg: rgba(0, 0, 0, 0.28);
+            --panel-border: rgba(255, 255, 255, 0.18);
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        body {
+            position: relative;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 1s ease-in-out;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                    linear-gradient(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.38)),
+                    radial-gradient(circle at center, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.22));
+            backdrop-filter: blur(2px);
+        }
+
+        .top-right-link {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2;
+        }
+
+        .top-right-link a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+        }
+
+        .top-right-link a:hover {
+            background: rgba(255, 255, 255, 0.16);
+            transform: translateY(-1px);
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .quote-card {
+            width: min(920px, 92vw);
+            padding: 40px 32px;
+            text-align: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(12px);
+        }
+
+        .quote-text {
+            margin: 0;
+            font-size: clamp(26px, 4vw, 44px);
+            line-height: 1.6;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            min-height: 3.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .quote-meta {
+            margin-top: 18px;
+            font-size: 16px;
+            color: var(--subtext-color);
+            min-height: 1.5em;
+            transition: opacity 0.4s ease;
+        }
+
+        .bottom-tip {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            z-index: 2;
+            padding: 8px 14px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 640px) {
+            .quote-card {
+                padding: 28px 20px;
+                border-radius: 18px;
+            }
+
+            .top-right-link {
+                top: 16px;
+                right: 16px;
+            }
+
+            .top-right-link a {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            .quote-meta {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="top-right-link">
+    <a id="repo-link" href="https://git.1v.fit/xiaoman1221/HitokotoGo" target="_blank" rel="noopener noreferrer">
+        <span>Code</span>
+        <span>↗</span>
+    </a>
+</div>
+
+<main class="container">
+    <section class="quote-card">
+        <p id="quote-text" class="quote-text">正在加载一言...</p>
+        <div id="quote-meta" class="quote-meta">请稍候</div>
+    </section>
+</main>
+
+<div class="bottom-tip">每 5 秒自动刷新一句</div>
+
+<script>
+    const backgroundApi = "https://api.yppp.net/api.php";
+    const quoteTextEl = document.getElementById("quote-text");
+    const quoteMetaEl = document.getElementById("quote-meta");
+
+    function refreshBackground() {
+        const imageUrl = `${backgroundApi}?t=${Date.now()}`;
+        document.body.style.backgroundImage = `url("${imageUrl}")`;
+    }
+
+    function normalizeSentence(data) {
+        const text =
+            data.hitokoto ||
+            data.text ||
+            data.sentence ||
+            data.content ||
+            "此刻无言，静待下一句。";
+
+        const fromParts = [
+            data.from,
+            data.from_who,
+            data.creator
+        ].filter(Boolean);
+
+        return {
+            text,
+            meta: fromParts.length > 0 ? "—— " + fromParts.join(" / ") : "—— HitokotoGo"
+        };
+    }
+
+    async function loadSentence() {
+        try {
+            const response = await fetch("/v2", {
+                method: "GET",
+                cache: "no-store"
+            });
+
+            if (!response.ok) {
+                throw new Error("请求失败: " + response.status);
+            }
+
+            const data = await response.json();
+            const sentence = normalizeSentence(data);
+
+            refreshBackground();
+
+            quoteTextEl.classList.add("fade-out");
+            quoteMetaEl.style.opacity = "0";
+
+            setTimeout(() => {
+                quoteTextEl.textContent = sentence.text;
+                quoteMetaEl.textContent = sentence.meta;
+                quoteTextEl.classList.remove("fade-out");
+                quoteMetaEl.style.opacity = "1";
+            }, 240);
+        } catch (error) {
+            quoteTextEl.textContent = "句子加载失败";
+            quoteMetaEl.textContent = "请检查服务或稍后重试";
+            console.error(error);
+        }
+    }
+
+    refreshBackground();
+    loadSentence();
+    setInterval(loadSentence, 5000);
+</script>
+</body>
+</html>

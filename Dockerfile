@@ -18,6 +18,7 @@ RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /app/hitokotogo /app/hitokotogo
 COPY --from=builder /app/data /app/data
+COPY --from=builder /app/frontend /app/frontend
 COPY --from=builder /app/.env.exp /app/.env
 
 EXPOSE 8080

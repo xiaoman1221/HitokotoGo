@@ -6,27 +6,24 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 )
 
 var ALLSentences []entity.S
-
-const indexPageHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<title>Title</title>
-</head>
-<body>
-	<h1>This is my first HTML page</h1>
-</body>
-</html>`
 
 // indexHandler
 // 首页展示
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	if _, err := w.Write([]byte(indexPageHTML)); err != nil {
+	page, err := os.ReadFile("frontend/index.html")
+	if err != nil {
+		log.Printf("failed to read index page: %v", err)
+		http.Error(w, "index page not found", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := w.Write(page); err != nil {
 		log.Printf("failed to write index response: %v", err)
 		return
 	}
