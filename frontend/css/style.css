@@ -1,0 +1,317 @@
+:root {
+    --text-color: #ffffff;
+    --subtext-color: rgba(255, 255, 255, 0.82);
+    --panel-bg: rgba(0, 0, 0, 0.28);
+    --panel-border: rgba(255, 255, 255, 0.18);
+    --shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+    --accent: rgba(255, 255, 255, 0.12);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    margin: 0;
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--text-color);
+}
+
+body {
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    transition: background-image 1s ease-in-out;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.38)),
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.22));
+    pointer-events: none;
+}
+
+.top-right-link {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+}
+
+.top-right-link a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    color: #fff;
+    text-decoration: none;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+}
+
+.top-right-link a:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-1px);
+}
+
+.container {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- index page --- */
+html.index-page, html.index-page body {
+    height: 100%;
+    overflow: hidden;
+}
+
+.index-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.quote-card {
+    padding: 40px 32px;
+    text-align: center;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px);
+    transition: width 0.3s ease;
+}
+
+.quote-text {
+    margin: 0;
+    font-size: clamp(26px, 4vw, 44px);
+    line-height: 1.6;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    min-height: 3.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.quote-meta {
+    margin-top: 18px;
+    font-size: 16px;
+    color: var(--subtext-color);
+    min-height: 1.5em;
+    transition: opacity 0.4s ease;
+}
+
+.bg-refresh-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 2;
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.bg-refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-1px);
+}
+
+.bottom-tip {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    z-index: 2;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    backdrop-filter: blur(10px);
+}
+
+/* --- stats page --- */
+html.stats-page body {
+    padding: 40px 24px;
+    min-height: 100%;
+}
+
+.stats-container {
+    max-width: 920px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.header .subtitle {
+    margin-top: 8px;
+    font-size: 15px;
+    color: var(--subtext-color);
+}
+
+.total-card {
+    text-align: center;
+    padding: 28px 24px;
+    margin-bottom: 28px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px);
+}
+
+.total-card-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.total-card-left {
+    text-align: left;
+    font-size: 13px;
+    color: var(--subtext-color);
+    line-height: 1.8;
+}
+
+.total-card-right {
+    text-align: right;
+}
+
+.total-number {
+    font-size: clamp(48px, 6vw, 72px);
+    font-weight: 800;
+    line-height: 1;
+}
+
+.total-label {
+    margin-top: 6px;
+    font-size: 15px;
+    color: var(--subtext-color);
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.category-card {
+    padding: 20px 18px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px);
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.category-card:hover {
+    transform: translateY(-2px);
+    background: rgba(0, 0, 0, 0.36);
+}
+
+.category-card .cat-name {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.category-card .cat-key {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--subtext-color);
+    background: var(--accent);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.category-card .cat-count {
+    margin-top: 12px;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.category-card .cat-desc {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--subtext-color);
+    opacity: 0.8;
+}
+
+.loading {
+    text-align: center;
+    padding: 60px 20px;
+    font-size: 18px;
+    color: var(--subtext-color);
+}
+
+.error-msg {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 16px;
+    color: #ff9999;
+}
+
+@media (max-width: 640px) {
+    html.stats-page body { padding: 24px 16px; }
+
+    .quote-card {
+        padding: 28px 20px;
+        border-radius: 18px;
+    }
+
+    .top-right-link {
+        top: 16px;
+        right: 16px;
+    }
+
+    .top-right-link a {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    .quote-meta {
+        font-size: 14px;
+    }
+
+    .category-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 )
 
 var ALLSentences []entity.S
@@ -72,9 +74,41 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := w.Write(page); err != nil {
+	interval := os.Getenv("REFRESH_INTERVAL")
+	if interval == "" {
+		interval = "5000"
+	}
+	intervalSeconds := interval
+	if n, err := strconv.Atoi(interval); err == nil {
+		intervalSeconds = strconv.Itoa(n / 1000)
+	}
+
+	bgRefresh := os.Getenv("BACKGROUND_REFRESH")
+	if bgRefresh != "true" {
+		bgRefresh = "false"
+	}
+
+	sentenceJSON := "null"
+	noRefresh := "false"
+	if uuid := r.URL.Query().Get("uuid"); uuid != "" {
+		noRefresh = "true"
+		for _, s := range ALLSentences {
+			if s.Uuid == uuid {
+				data, _ := json.Marshal(s)
+				sentenceJSON = string(data)
+				break
+			}
+		}
+	}
+
+	content := strings.ReplaceAll(string(page), "{{REFRESH_INTERVAL}}", interval)
+	content = strings.ReplaceAll(content, "{{REFRESH_INTERVAL_SECONDS}}", intervalSeconds)
+	content = strings.ReplaceAll(content, "{{NO_REFRESH}}", noRefresh)
+	content = strings.ReplaceAll(content, "{{SENTENCE_JSON}}", sentenceJSON)
+	content = strings.ReplaceAll(content, "{{BACKGROUND_REFRESH}}", bgRefresh)
+
+	if _, err := w.Write([]byte(content)); err != nil {
 		log.Printf("failed to write index response: %v", err)
-		return
 	}
 }
 

@@ -3,11 +3,17 @@ package main
 import (
 	"HitokotoGo/libs"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 
 	"github.com/joho/godotenv"
 )
+
+func init() {
+	mime.AddExtensionType(".js", "application/javascript")
+	mime.AddExtensionType(".css", "text/css")
+}
 
 func main() {
 	log.Println("初始化...")
@@ -18,13 +24,15 @@ func main() {
 	if err != nil {
 		log.Println("未检测到.env 文件,正在尝试创建！")
 		err := godotenv.Write(map[string]string{
-			"HOST":           "0.0.0.0",
-			"PORT":           "8080",
-			"REDIS_HOST":     "127.0.0.1",
-			"REDIS_PORT":     "6379",
-			"REDIS_PASSWORD": "",
-			"REDIS_DB":       "0",
-			"SENTENCES_URL":  "https://sentences-bundle.hitokoto.cn",
+			"HOST":               "0.0.0.0",
+			"PORT":               "8080",
+			"REDIS_HOST":         "127.0.0.1",
+			"REDIS_PORT":         "6379",
+			"REDIS_PASSWORD":     "",
+			"REDIS_DB":           "0",
+			"SENTENCES_URL":      "https://sentences-bundle.hitokoto.cn",
+			"REFRESH_INTERVAL":   "5000",
+			"BACKGROUND_REFRESH": "false",
 		}, ".env")
 		if err != nil {
 			log.Fatalf("创建.env文件失败！")
@@ -47,6 +55,9 @@ func main() {
 	ALLSentences = libs.LoadAllSentences("all")
 	log.Printf("共加载 %d 条句子", len(ALLSentences))
 	libs.CacheAllSentences(ALLSentences)
+
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("frontend/css"))))
+	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/v2", apiHandler)

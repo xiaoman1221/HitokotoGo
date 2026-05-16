@@ -1,193 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="stats-page">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>统计 - HitokotoGo</title>
-    <style>
-        :root {
-            --text-color: #ffffff;
-            --subtext-color: rgba(255, 255, 255, 0.82);
-            --panel-bg: rgba(0, 0, 0, 0.28);
-            --panel-border: rgba(255, 255, 255, 0.18);
-            --shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
-            --accent: rgba(255, 255, 255, 0.12);
-        }
-
-        * { box-sizing: border-box; }
-
-        html, body {
-            width: 100%;
-            min-height: 100%;
-            margin: 0;
-            font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            color: var(--text-color);
-        }
-
-        body {
-            position: relative;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            transition: background-image 1s ease-in-out;
-            padding: 40px 24px;
-        }
-
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            background:
-                linear-gradient(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.38)),
-                radial-gradient(circle at center, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.22));
-            backdrop-filter: blur(1px);
-        }
-
-        .top-right-link {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            z-index: 2;
-        }
-
-        .top-right-link a {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            color: #fff;
-            text-decoration: none;
-            background: rgba(0, 0, 0, 0.35);
-            border: 1px solid var(--panel-border);
-            border-radius: 999px;
-            box-shadow: var(--shadow);
-            transition: all 0.2s ease;
-        }
-
-        .top-right-link a:hover {
-            background: rgba(255, 255, 255, 0.16);
-            transform: translateY(-1px);
-        }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 920px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 32px;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: clamp(28px, 4vw, 42px);
-            font-weight: 700;
-            letter-spacing: 0.02em;
-        }
-
-        .header .subtitle {
-            margin-top: 8px;
-            font-size: 15px;
-            color: var(--subtext-color);
-        }
-
-        .total-card {
-            text-align: center;
-            padding: 28px 24px;
-            margin-bottom: 28px;
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 20px;
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(12px);
-        }
-
-        .total-number {
-            font-size: clamp(48px, 6vw, 72px);
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .total-label {
-            margin-top: 6px;
-            font-size: 15px;
-            color: var(--subtext-color);
-        }
-
-        .category-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 16px;
-        }
-
-        .category-card {
-            padding: 20px 18px;
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(12px);
-            transition: transform 0.2s ease, background 0.2s ease;
-        }
-
-        .category-card:hover {
-            transform: translateY(-2px);
-            background: rgba(0, 0, 0, 0.36);
-        }
-
-        .category-card .cat-name {
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .category-card .cat-key {
-            display: inline-block;
-            margin-top: 4px;
-            font-size: 12px;
-            color: var(--subtext-color);
-            background: var(--accent);
-            padding: 2px 8px;
-            border-radius: 6px;
-        }
-
-        .category-card .cat-count {
-            margin-top: 12px;
-            font-size: 28px;
-            font-weight: 700;
-        }
-
-        .category-card .cat-desc {
-            margin-top: 4px;
-            font-size: 13px;
-            color: var(--subtext-color);
-            opacity: 0.8;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            font-size: 18px;
-            color: var(--subtext-color);
-        }
-
-        .error-msg {
-            text-align: center;
-            padding: 40px 20px;
-            font-size: 16px;
-            color: #ff9999;
-        }
-
-        @media (max-width: 640px) {
-            body { padding: 24px 16px; }
-            .top-right-link { top: 16px; right: 16px; }
-            .top-right-link a { padding: 8px 12px; font-size: 14px; }
-            .category-grid { grid-template-columns: 1fr; }
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
 <div class="top-right-link">
@@ -196,21 +13,21 @@
     </a>
 </div>
 
-<main class="container">
+<main class="container stats-container">
     <div class="header">
         <h1>统计</h1>
         <div class="subtitle">数据概览</div>
     </div>
 
     <div id="total-card" class="total-card" style="display:none">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-            <div style="text-align:left; font-size:13px; color:var(--subtext-color); line-height:1.8;">
+        <div class="total-card-inner">
+            <div class="total-card-left">
                 <div>API：©2026 HitokotoGo Powered By 小满1221</div>
                 <div>API：<a href="https://git.1v.fit/xiaoman1221/HitokotoGo" target="_blank" rel="noopener noreferrer" style="color:inherit;">开放源代码</a></div>
                 <div>句子包：<a href="https://hitokoto.cn" target="_blank" rel="noopener noreferrer" style="color:inherit;">2016-2026 MoeTeam. All Rights Reserved.</a></div>
                 <div>句子包版本: <span id="bundle-version">-</span></div>
             </div>
-            <div style="text-align:right;">
+            <div class="total-card-right">
                 <div id="total-number" class="total-number">0</div>
                 <div class="total-label">句子总数</div>
             </div>
@@ -222,55 +39,6 @@
     </div>
 </main>
 
-<script>
-    const backgroundApi = "https://t.alcy.cc/pc";
-
-    function refreshBackground() {
-        document.body.style.backgroundImage = `url("${backgroundApi}?t=${Date.now()}")`;
-    }
-
-    async function loadStats() {
-        const grid = document.getElementById("category-grid");
-        const totalCard = document.getElementById("total-card");
-        const totalNumber = document.getElementById("total-number");
-
-        try {
-            const response = await fetch("/stats/data", {
-                method: "GET",
-                cache: "no-store"
-            });
-
-            if (!response.ok) {
-                throw new Error("请求失败: " + response.status);
-            }
-
-            const data = await response.json();
-
-            totalNumber.textContent = data.total.toLocaleString();
-            document.getElementById("bundle-version").textContent = data.bundle_version || "-";
-            totalCard.style.display = "block";
-
-            grid.innerHTML = "";
-
-            data.categories.forEach(cat => {
-                const card = document.createElement("div");
-                card.className = "category-card";
-                card.innerHTML = `
-                    <div class="cat-name">${cat.name}</div>
-                    <span class="cat-key">${cat.key}</span>
-                    <div class="cat-count">${cat.count.toLocaleString()}</div>
-                    <div class="cat-desc">${cat.desc}</div>
-                `;
-                grid.appendChild(card);
-            });
-        } catch (error) {
-            grid.innerHTML = `<div class="error-msg">加载失败: ${error.message}</div>`;
-            console.error(error);
-        }
-    }
-
-    refreshBackground();
-    loadStats();
-</script>
+<script src="/js/stats.js"></script>
 </body>
 </html>
