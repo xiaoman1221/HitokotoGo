@@ -7,14 +7,81 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 var ALLSentences []entity.S
 
+var (
+	totalQueries   atomic.Int64
+	activeRequests atomic.Int64
+	reqTimestamps  []time.Time
+	reqMu          sync.Mutex
+)
+
+func trackRequest() {
+	totalQueries.Add(1)
+	activeRequests.Add(1)
+	reqMu.Lock()
+	reqTimestamps = append(reqTimestamps, time.Now())
+	reqMu.Unlock()
+}
+
+func finishRequest() {
+	activeRequests.Add(-1)
+}
+
+func loadAverages() (load1, load5, load15 float64) {
+	reqMu.Lock()
+	defer reqMu.Unlock()
+	now := time.Now()
+	cutoff1 := now.Add(-time.Minute)
+	cutoff5 := now.Add(-5 * time.Minute)
+	cutoff15 := now.Add(-15 * time.Minute)
+
+	var recent []time.Time
+	var c1, c5, c15 int
+	for _, t := range reqTimestamps {
+		if t.After(cutoff15) {
+			recent = append(recent, t)
+			if t.After(cutoff5) {
+				c5++
+				if t.After(cutoff1) {
+					c1++
+				}
+			}
+			c15++
+		}
+	}
+	reqTimestamps = recent
+
+	load1 = float64(c1)
+	load5 = float64(c5) / 5
+	load15 = float64(c15) / 15
+	return
+}
+
+func requestsPerMinute() int {
+	reqMu.Lock()
+	defer reqMu.Unlock()
+	cutoff := time.Now().Add(-time.Minute)
+	var filtered []time.Time
+	for _, t := range reqTimestamps {
+		if t.After(cutoff) {
+			filtered = append(filtered, t)
+		}
+	}
+	reqTimestamps = filtered
+	return len(filtered)
+}
+
 // statsHandler
-// 统计数据展示
+// 统计数据 + 运行状态
 func statsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
@@ -46,13 +113,26 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	version := libs.LoadVersion()
-	resp := map[string]interface{}{
-		"total":          total,
-		"categories":     stats,
-		"bundle_version": "",
-	}
+	bundleVersion := ""
 	if version != nil {
-		resp["bundle_version"] = version.BundleVersion
+		bundleVersion = version.BundleVersion
+	}
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	load1, load5, load15 := loadAverages()
+
+	resp := map[string]interface{}{
+		"total":           total,
+		"categories":      stats,
+		"bundle_version":  bundleVersion,
+		"total_queries":   totalQueries.Load(),
+		"active_requests": activeRequests.Load(),
+		"load_1":          load1,
+		"load_5":          load5,
+		"load_15":         load15,
+		"rpm":             requestsPerMinute(),
+		"memory_mb":       float64(memStats.Alloc) / 1024 / 1024,
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -142,6 +222,9 @@ func docsHandler(w http.ResponseWriter, r *http.Request) {
 // apiHandler
 // 随机获取句子
 func apiHandler(w http.ResponseWriter, r *http.Request) {
+	trackRequest()
+	defer finishRequest()
+
 	if sentence := libs.GetRandomSentenceFromCache(); sentence != nil {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err := json.NewEncoder(w).Encode(sentence); err != nil {

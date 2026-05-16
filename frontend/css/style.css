@@ -226,6 +226,52 @@ html.stats-page body {
     color: var(--subtext-color);
 }
 
+.status-section {
+    margin-bottom: 28px;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.status-card {
+    padding: 16px 12px;
+    text-align: center;
+    background: var(--accent);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.status-card:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.status-value {
+    font-size: clamp(22px, 3vw, 32px);
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+#load {
+    font-size: clamp(15px, 3vw, 20px);
+}
+
+.status-label {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--subtext-color);
+}
+
+@media (max-width: 480px) {
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .category-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

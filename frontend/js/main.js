@@ -57,14 +57,14 @@ function backspaceText(element, callback) {
     }, 10);
 }
 
-function displaySentence(sentence) {
+function displaySentence(sentence, callback) {
     setCardWidth();
     if (BACKGROUND_REFRESH) {
         refreshBackground();
     }
     quoteMetaEl.textContent = sentence.meta;
     quoteMetaEl.style.opacity = "1";
-    typeText(quoteTextEl, sentence.text);
+    typeText(quoteTextEl, sentence.text, callback);
 }
 
 let isLoading = false;
@@ -87,12 +87,18 @@ async function loadSentence() {
 
         quoteMetaEl.style.opacity = "0";
         backspaceText(quoteTextEl, () => {
-            displaySentence(sentence);
+            displaySentence(sentence, () => {
+                const readingTime = sentence.text.length * 300;
+                const nextInterval = Math.max(REFRESH_INTERVAL, readingTime);
+                refreshTimer = setTimeout(loadSentence, nextInterval);
+            });
         });
     } catch (error) {
         quoteTextEl.textContent = "句子加载失败";
         quoteMetaEl.textContent = "请检查服务或稍后重试";
         console.error(error);
+        if (typeof refreshTimer !== "undefined") clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(loadSentence, REFRESH_INTERVAL);
     } finally {
         isLoading = false;
     }
@@ -111,9 +117,10 @@ if (INITIAL_SENTENCE && INITIAL_SENTENCE.uuid) {
     quoteMetaEl.textContent = "请检查 UUID 是否正确";
 }
 
+var refreshTimer;
+
 if (NO_REFRESH) {
     document.getElementById("bottom-tip").style.display = "none";
 } else {
     loadSentence();
-    setInterval(loadSentence, REFRESH_INTERVAL);
 }
