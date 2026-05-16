@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: HitokotoGo API
+  description: |
+    一言（Hitokoto）API - 随机获取一句句子
+  version: "1.0.0"
+  contact:
+    name: HitokotoGo
+    url: https://hitokoto.cn
+servers:
+  - url: /
+paths:
+  /:
+    get:
+      summary: 首页
+      description: 返回前端首页 HTML
+      responses:
+        "200":
+          description: 成功
+          content:
+            text/html:
+              schema:
+                type: string
+  /v2:
+    get:
+      summary: 随机获取一句句子
+      description: 从缓存或全部句子中随机获取一句
+      parameters:
+        - name: c
+          in: query
+          description: 分类筛选（如 a、b、c 等）
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sentence"
+        "500":
+          description: 服务器错误
+  /stats:
+    get:
+      summary: 统计页面
+      description: 返回统计前端页面
+      responses:
+        "200":
+          description: 成功
+          content:
+            text/html:
+              schema:
+                type: string
+  /stats/data:
+    get:
+      summary: 统计数据
+      description: 返回句子分类统计数据
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+components:
+  schemas:
+    Sentence:
+      type: object
+      properties:
+        id:
+          type: integer
+        uuid:
+          type: string
+        hitokoto:
+          type: string
+        type:
+          type: string
+        from:
+          type: string
+        from_who:
+          type: string
+          nullable: true
+        creator:
+          type: string
+        creator_uid:
+          type: integer
+        reviewer:
+          type: integer
+        commit_from:
+          type: string
+        created_at:
+          type: string
+        length:
+          type: integer
+    CategoryStat:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        desc:
+          type: string
+        count:
+          type: integer
+    StatsResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        bundle_version:
+          type: string
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryStat"

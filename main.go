@@ -11,8 +11,14 @@ import (
 )
 
 func init() {
-	mime.AddExtensionType(".js", "application/javascript")
-	mime.AddExtensionType(".css", "text/css")
+	err := mime.AddExtensionType(".js", "application/javascript")
+	if err != nil {
+		return
+	}
+	err = mime.AddExtensionType(".css", "text/css")
+	if err != nil {
+		return
+	}
 }
 
 func main() {
@@ -78,6 +84,10 @@ func main() {
 			log.Printf("failed to write stats response: %v", err)
 		}
 	})
+	http.HandleFunc("/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "frontend/openapi.yaml")
+	})
+	http.HandleFunc("/docs", docsHandler)
 
 	log.Println("正在启动服务...")
 	info := os.Getenv("HOST") + ":" + os.Getenv("PORT")

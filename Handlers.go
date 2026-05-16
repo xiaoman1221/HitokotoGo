@@ -112,14 +112,31 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// apiHandler
-// 随机获取句子
 func resolveCategoryKey(r *http.Request) string {
 	categoryKey := r.URL.Query().Get("c")
 	if categoryKey == "" {
 		return "all"
 	}
 	return categoryKey
+}
+
+// docsHandler
+// API 文档页面
+func docsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/docs" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	page, err := os.ReadFile("frontend/docs.html")
+	if err != nil {
+		log.Printf("failed to read docs page: %v", err)
+		http.Error(w, "docs page not found", http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write(page); err != nil {
+		log.Printf("failed to write docs response: %v", err)
+	}
 }
 
 // apiHandler
