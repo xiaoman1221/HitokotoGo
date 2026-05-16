@@ -42,7 +42,7 @@
             background:
                     linear-gradient(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.38)),
                     radial-gradient(circle at center, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.22));
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(1px);
         }
 
         .top-right-link {
@@ -153,8 +153,15 @@
 </head>
 <body>
 <div class="top-right-link">
+    <a href="/stats" style="margin-left:8px;">
+        <span>统计</span>
+    </a>
     <a id="repo-link" href="https://git.1v.fit/xiaoman1221/HitokotoGo" target="_blank" rel="noopener noreferrer">
         <span>Code</span>
+        <span>↗</span>
+    </a>
+    <a href="https://www.yhdzz.cn/" target="_blank" rel="noopener noreferrer" style="margin-left:8px;">
+        <span>博客</span>
         <span>↗</span>
     </a>
 </div>
@@ -169,7 +176,7 @@
 <div class="bottom-tip">每 5 秒自动刷新一句</div>
 
 <script>
-    const backgroundApi = "https://api.yppp.net/api.php";
+    const backgroundApi = "https://t.alcy.cc/pc";
     const quoteTextEl = document.getElementById("quote-text");
     const quoteMetaEl = document.getElementById("quote-meta");
 

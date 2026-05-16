@@ -19,7 +19,7 @@ func main() {
 		log.Println("未检测到.env 文件,正在尝试创建！")
 		err := godotenv.Write(map[string]string{
 			"HOST":           "0.0.0.0",
-			"PORT":           "n8080",
+			"PORT":           "8080",
 			"REDIS_HOST":     "127.0.0.1",
 			"REDIS_PORT":     "6379",
 			"REDIS_PASSWORD": "",
@@ -32,7 +32,7 @@ func main() {
 		log.Fatalf("创建.env文件成功！,请重新启动本程序")
 	}
 	log.Println("正在检查Redis服务")
-	if libs.CheckRedis() {
+	if libs.InitRedis() {
 		log.Println("Redis服务正常")
 	} else {
 		log.Println("Redis服务异常,已回退至文件缓存")
@@ -43,8 +43,30 @@ func main() {
 		log.Fatalf("句子检查更新失败")
 	}
 
+	log.Println("正在加载句子数据...")
+	ALLSentences = libs.LoadAllSentences("all")
+	log.Printf("共加载 %d 条句子", len(ALLSentences))
+	libs.CacheAllSentences(ALLSentences)
+
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/v2", apiHandler)
+	http.HandleFunc("/stats/data", statsHandler)
+	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/stats" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		page, err := os.ReadFile("frontend/stats.html")
+		if err != nil {
+			log.Printf("failed to read stats page: %v", err)
+			http.Error(w, "stats page not found", http.StatusInternalServerError)
+			return
+		}
+		if _, err := w.Write(page); err != nil {
+			log.Printf("failed to write stats response: %v", err)
+		}
+	})
 
 	log.Println("正在启动服务...")
 	info := os.Getenv("HOST") + ":" + os.Getenv("PORT")
