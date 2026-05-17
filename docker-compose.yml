@@ -6,9 +6,7 @@
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: xiaoman1221/hitokotogo:latest
     container_name: hitokotogo-app
     depends_on:
       - redis
