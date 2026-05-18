@@ -1,9 +1,3 @@
-# Docker Compose 配置
-# 中国大陆用户请在 Docker daemon 中配置 registry-mirror：
-# 参考 https://www.docker.com/blog/how-to-set-up-docker-image-mirrors-in-china/
-#
-# 或使用阿里云加速器（需登录 https://cr.console.aliyun.com 获取专属加速地址）
-
 services:
   app:
     image: xiaoman1221/hitokotogo:latest
@@ -27,8 +21,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: hitokotogo-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     command: ["redis-server", "--appendonly", "yes"]

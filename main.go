@@ -23,7 +23,9 @@ func init() {
 
 func main() {
 	log.Println("初始化...")
-
+	log.Println("©2026 HitokotoGo Powered By 小满1221")
+	log.Println("https://git.1v.fit/xiaoman1221/HitokotoGo")
+	log.Println("句子包来自一言：https://hitokoto.cn/")
 	// 加载环境变量
 	err := godotenv.Load(".env")
 	log.Println("正在加载环境变量...")
