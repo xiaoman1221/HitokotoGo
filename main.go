@@ -6,6 +6,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -41,6 +42,7 @@ func main() {
 			"SENTENCES_URL":      "https://sentences-bundle.hitokoto.cn",
 			"REFRESH_INTERVAL":   "5000",
 			"BACKGROUND_REFRESH": "false",
+			"AUTO_UPDATE":        "true",
 		}, ".env")
 		if err != nil {
 			log.Fatalf("创建.env文件失败！")
@@ -91,6 +93,10 @@ func main() {
 	})
 	http.HandleFunc("/docs", docsHandler)
 
+	if os.Getenv("AUTO_UPDATE") == "true" {
+		go startAutoUpdateLoop(time.Hour)
+	}
+
 	log.Println("正在启动服务...")
 	info := os.Getenv("HOST") + ":" + os.Getenv("PORT")
 	log.Println("服务器将在 " + info + "启动...")
@@ -99,5 +105,20 @@ func main() {
 	if err != nil {
 		log.Println(err.Error())
 		return
+	}
+}
+
+func startAutoUpdateLoop(interval time.Duration) {
+	if !libs.AutoUpdate() {
+		log.Println("自动更新失败，将在下一个运行周期重试")
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if !libs.AutoUpdate() {
+			log.Println("自动更新失败，将在下一个运行周期重试")
+		}
 	}
 }
