@@ -3,7 +3,7 @@ info:
   title: HitokotoGo API
   description: |
     一言（Hitokoto）API - 随机获取一句句子
-  version: "1.0.0"
+  version: "1.0.4"
   contact:
     name: HitokotoGo
     url: https://hitokoto.cn
