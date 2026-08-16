@@ -21,10 +21,14 @@ HitokotoGo/
 │   ├── Categories.go     # 分类结构体
 │   └── Version.go        # 版本结构体
 ├── libs/                 # 工具库
-│   ├── init.go           # Redis 连接检测
 │   ├── load.go           # 句子/分类数据加载
+│   ├── store.go          # 内存句子缓存（含分类索引与 uuid 索引）
 │   ├── random.go         # 随机数工具
-│   └── Sentences.go      # 句子下载更新逻辑
+│   ├── redis.go          # Redis 连接与按分类缓存
+│   ├── httpget.go        # 带超时的 HTTP 下载
+│   ├── version.go        # 本地/远程版本读取
+│   ├── Sentences.go      # 句子下载更新逻辑
+│   └── autoupdate.go     # 定时自动更新
 ├── frontend/             # 前端静态页面
 │   ├── index.html        # 首页（随机展示句子）
 │   └── stats.html        # 统计页面
@@ -169,6 +173,10 @@ curl http://localhost:8080/v2?c=a
 | `REDIS_PASSWORD` | Redis 密码 | `""` |
 | `REDIS_DB` | Redis 数据库编号 | `0` |
 | `SENTENCES_URL` | 句子数据源地址 | `https://sentences-bundle.hitokoto.cn` |
+| `REFRESH_INTERVAL` | 首页自动刷新间隔（毫秒） | `5000` |
+| `BACKGROUND_REFRESH` | 每次刷新是否更换背景图 | `false` |
+| `AUTO_UPDATE` | 是否每小时自动检查句子包更新 | `true` |
+| `BACKGROUND_API` | 背景图 API 地址 | `https://t.alcy.cc/pc` |
 
 ## 技术栈
 

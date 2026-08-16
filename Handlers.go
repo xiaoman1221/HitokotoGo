@@ -15,8 +15,6 @@ import (
 	"time"
 )
 
-var ALLSentences []entity.S
-
 var (
 	totalQueries   atomic.Int64
 	activeRequests atomic.Int64
@@ -24,11 +22,17 @@ var (
 	reqMu          sync.Mutex
 )
 
+// reqTimestampMax 触发时间戳裁剪的阈值，防止无人访问统计页时数组无限增长。
+const reqTimestampMax = 100000
+
 func trackRequest() {
 	totalQueries.Add(1)
 	activeRequests.Add(1)
 	reqMu.Lock()
 	reqTimestamps = append(reqTimestamps, time.Now())
+	if len(reqTimestamps) > reqTimestampMax {
+		reqTimestamps = trimOldTimestamps(reqTimestamps, time.Now())
+	}
 	reqMu.Unlock()
 }
 
@@ -36,7 +40,21 @@ func finishRequest() {
 	activeRequests.Add(-1)
 }
 
-func loadAverages() (load1, load5, load15 float64) {
+// trimOldTimestamps 去掉超过 15 分钟的时间戳（reqTimestamps 按时间有序追加）。
+func trimOldTimestamps(ts []time.Time, now time.Time) []time.Time {
+	cutoff := now.Add(-15 * time.Minute)
+	i := 0
+	for i < len(ts) && !ts[i].After(cutoff) {
+		i++
+	}
+	if i == 0 {
+		return ts
+	}
+	return ts[i:]
+}
+
+// loadAverages 返回最近 1/5/15 分钟的每分钟请求数均值，以及当前 RPM。
+func loadAverages() (load1, load5, load15 float64, rpm int) {
 	reqMu.Lock()
 	defer reqMu.Unlock()
 	now := time.Now()
@@ -49,13 +67,13 @@ func loadAverages() (load1, load5, load15 float64) {
 	for _, t := range reqTimestamps {
 		if t.After(cutoff15) {
 			recent = append(recent, t)
+			c15++
 			if t.After(cutoff5) {
 				c5++
 				if t.After(cutoff1) {
 					c1++
 				}
 			}
-			c15++
 		}
 	}
 	reqTimestamps = recent
@@ -63,21 +81,8 @@ func loadAverages() (load1, load5, load15 float64) {
 	load1 = float64(c1)
 	load5 = float64(c5) / 5
 	load15 = float64(c15) / 15
+	rpm = c1
 	return
-}
-
-func requestsPerMinute() int {
-	reqMu.Lock()
-	defer reqMu.Unlock()
-	cutoff := time.Now().Add(-time.Minute)
-	var filtered []time.Time
-	for _, t := range reqTimestamps {
-		if t.After(cutoff) {
-			filtered = append(filtered, t)
-		}
-	}
-	reqTimestamps = filtered
-	return len(filtered)
 }
 
 // statsHandler
@@ -85,26 +90,18 @@ func requestsPerMinute() int {
 func statsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	categories := libs.LoadCategories()
-	if categories == nil {
+	categories := libs.GetCategories()
+	if len(categories) == 0 {
 		http.Error(w, "failed to load categories", http.StatusInternalServerError)
 		return
 	}
 
-	type CategoryStat struct {
-		Key   string `json:"key"`
-		Name  string `json:"name"`
-		Desc  string `json:"desc"`
-		Count int    `json:"count"`
-	}
-
-	var stats []CategoryStat
+	stats := make([]entity.CategoryStat, 0, len(categories))
 	total := 0
 	for _, cat := range categories {
-		sentences := libs.LoadAllSentences(cat.Key)
-		count := len(sentences)
+		count := len(libs.GetSentences(cat.Key))
 		total += count
-		stats = append(stats, CategoryStat{
+		stats = append(stats, entity.CategoryStat{
 			Key:   cat.Key,
 			Name:  cat.Name,
 			Desc:  cat.Desc,
@@ -120,7 +117,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	load1, load5, load15 := loadAverages()
+	load1, load5, load15, rpm := loadAverages()
 
 	resp := map[string]interface{}{
 		"total":           total,
@@ -131,14 +128,12 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 		"load_1":          load1,
 		"load_5":          load5,
 		"load_15":         load15,
-		"rpm":             requestsPerMinute(),
+		"rpm":             rpm,
 		"memory_mb":       float64(memStats.Alloc) / 1024 / 1024,
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("error encoding stats response: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
 	}
 }
 
@@ -159,8 +154,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		interval = "5000"
 	}
 	intervalSeconds := interval
-	if n, err := strconv.Atoi(interval); err == nil {
-		intervalSeconds = strconv.Itoa(n / 1000)
+	if n, err := strconv.Atoi(interval); err == nil && n > 0 {
+		intervalSeconds = strconv.Itoa((n + 500) / 1000)
 	}
 
 	bgRefresh := os.Getenv("BACKGROUND_REFRESH")
@@ -172,16 +167,14 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	noRefresh := "false"
 	if uuid := r.URL.Query().Get("uuid"); uuid != "" {
 		noRefresh = "true"
-		for _, s := range ALLSentences {
-			if s.Uuid == uuid {
-				data, _ := json.Marshal(s)
-				sentenceJSON = string(data)
-				break
-			}
+		if s, ok := libs.GetSentenceByUUID(uuid); ok {
+			data, _ := json.Marshal(s)
+			sentenceJSON = string(data)
 		}
 	}
 
-	content := strings.ReplaceAll(string(page), "{{REFRESH_INTERVAL}}", interval)
+	content := injectVars(string(page))
+	content = strings.ReplaceAll(content, "{{REFRESH_INTERVAL}}", interval)
 	content = strings.ReplaceAll(content, "{{REFRESH_INTERVAL_SECONDS}}", intervalSeconds)
 	content = strings.ReplaceAll(content, "{{NO_REFRESH}}", noRefresh)
 	content = strings.ReplaceAll(content, "{{SENTENCE_JSON}}", sentenceJSON)
@@ -220,35 +213,35 @@ func docsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // apiHandler
-// 随机获取句子
+// 随机获取句子（支持 ?c= 分类筛选）
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 	trackRequest()
 	defer finishRequest()
 
-	if sentence := libs.GetRandomSentenceFromCache(); sentence != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if err := json.NewEncoder(w).Encode(sentence); err != nil {
-			log.Printf("error encoding response: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
+	categoryKey := resolveCategoryKey(r)
+
+	if categoryKey != "all" && !libs.IsValidCategory(categoryKey) {
+		http.Error(w, "unknown category: "+categoryKey, http.StatusBadRequest)
 		return
 	}
 
-	if len(ALLSentences) == 0 {
-		categoryKey := resolveCategoryKey(r)
-		ALLSentences = libs.LoadAllSentences(categoryKey)
+	if sentence := libs.GetRandomSentenceFromCache(categoryKey); sentence != nil {
+		writeJSON(w, sentence)
+		return
 	}
-	if len(ALLSentences) == 0 {
+
+	sentences := libs.GetSentences(categoryKey)
+	if len(sentences) == 0 {
 		http.Error(w, "No sentences available", http.StatusInternalServerError)
 		return
 	}
 
-	randomSentence := ALLSentences[libs.RandInt(0, len(ALLSentences))]
+	writeJSON(w, sentences[libs.RandInt(0, len(sentences))])
+}
 
+func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if err := json.NewEncoder(w).Encode(randomSentence); err != nil {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
 		log.Printf("error encoding response: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
 	}
 }

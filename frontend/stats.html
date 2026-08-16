@@ -7,59 +7,54 @@
     <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-<div class="top-right-link">
-    <a href="/">
-        <span>← 返回</span>
-    </a>
-</div>
+    <header class="site-header">
+        <a class="wordmark" href="/">Hitokoto<strong>Go</strong></a>
+        <nav class="nav">
+            <a href="/"><span>← 返回</span></a>
+        </nav>
+    </header>
 
-<main class="container stats-container">
-    <div class="header">
-        <h1>统计</h1>
-        <div class="subtitle">数据概览</div>
-    </div>
+    <main class="stats">
+        <header class="stats-hero">
+            <p class="kicker mono">Stats&nbsp;//&nbsp;数据概览</p>
+            <h1 class="stats-title">统计</h1>
+            <p class="stats-subtitle mono">句子包 v<span id="bundle-version">-</span>&nbsp;·&nbsp;©2026 Powered By 小满1221&nbsp;·&nbsp;<a href="https://github.com/xiaoman1221/HitokotoGo" target="_blank" rel="noopener noreferrer">开放源代码 ↗</a></p>
+        </header>
 
-    <div id="total-card" class="total-card" style="display:none">
-        <div class="total-card-inner">
-            <div class="total-card-left">
-                <div>API：©2026 HitokotoGo Powered By 小满1221</div>
-                <div>API：<a href="https://github.com/xiaoman1221/HitokotoGo" target="_blank" rel="noopener noreferrer" style="color:inherit;">开放源代码</a></div>
-                <div>句子包：<a href="https://hitokoto.cn" target="_blank" rel="noopener noreferrer" style="color:inherit;">2016-2026 MoeTeam. All Rights Reserved.</a></div>
-                <div>句子包版本: <span id="bundle-version">-</span></div>
+        <section class="stats-overview">
+            <div class="panel panel-total">
+                <p class="panel-label mono">句子总数 / Total</p>
+                <p class="total-number" id="total-number">—</p>
+                <p class="panel-note">按 12 个分类实时统计，数据来自 hitokoto.cn</p>
             </div>
-            <div class="total-card-right">
-                <div id="total-number" class="total-number">0</div>
-                <div class="total-label">句子总数</div>
+            <div class="panel panel-status">
+                <div class="status-row">
+                    <span class="mono">累计查询</span>
+                    <span class="status-value mono" id="total-queries">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="mono">实时请求 / 分</span>
+                    <span class="status-value mono" id="rpm">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="mono">负载 load&nbsp;<span class="dim">1 / 5 / 15</span></span>
+                    <span class="status-value mono" id="load">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="mono">内存占用</span>
+                    <span class="status-value mono" id="memory">-</span>
+                </div>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <div id="status-section" class="status-section" style="display:none">
-        <div class="status-grid">
-            <div class="status-card">
-                <div class="status-label">累计查询次数</div>
-                <div class="status-value" id="total-queries">-</div>
+        <section class="category-section">
+            <p class="kicker mono">Categories&nbsp;//&nbsp;<span id="category-count">-</span>&nbsp;个分类</p>
+            <div id="category-list" class="category-list">
+                <p class="loading">正在加载统计数据…</p>
             </div>
-            <div class="status-card">
-                <div class="status-label">工作负载 (load)</div>
-                <div class="status-value" id="load">-</div>
-            </div>
-            <div class="status-card">
-                <div class="status-label">实时请求数 (次/分)</div>
-                <div class="status-value" id="rpm">-</div>
-            </div>
-            <div class="status-card">
-                <div class="status-label">平均内存</div>
-                <div class="status-value" id="memory">-</div>
-            </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
-    <div id="category-grid" class="category-grid">
-        <div class="loading">正在加载统计数据...</div>
-    </div>
-</main>
-
-<script src="/js/stats.js"></script>
+    <script src="/js/stats.js"></script>
 </body>
 </html>

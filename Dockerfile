@@ -1,4 +1,4 @@
-FROM golang:1.26.0 AS builder
+FROM golang:1.26 AS builder
 
 ENV GOPROXY=https://goproxy.cn,direct
 
@@ -13,7 +13,6 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o hitokotogo .
 
 FROM alpine:3.20
-
 
 WORKDIR /app
 

@@ -4,10 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>API 文档 - HitokotoGo</title>
+  <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
 </head>
-<body>
-  <div id="swagger-ui"></div>
+<body class="docs-page">
+  <header class="site-header">
+    <a class="wordmark" href="/">Hitokoto<strong>Go</strong></a>
+    <nav class="nav">
+      <a href="/"><span>← 返回</span></a>
+    </nav>
+  </header>
+
+  <main class="docs">
+    <p class="kicker mono">API&nbsp;//&nbsp;OpenAPI 3.0</p>
+    <h1 class="docs-title">接口文档</h1>
+    <div id="swagger-ui"></div>
+  </main>
+
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
   <script>

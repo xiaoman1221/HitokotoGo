@@ -3,7 +3,8 @@ services:
     image: xiaoman1221/hitokotogo:latest
     container_name: hitokotogo-app
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
@@ -14,6 +15,10 @@ services:
       REDIS_PASSWORD: ""
       REDIS_DB: "0"
       SENTENCES_URL: "https://sentences-bundle.hitokoto.cn"
+      REFRESH_INTERVAL: "5000"
+      BACKGROUND_REFRESH: "false"
+      AUTO_UPDATE: "true"
+      BACKGROUND_API: "https://t.alcy.cc/pc"
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -24,6 +29,11 @@ services:
     volumes:
       - redis-data:/data
     command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
 
 volumes:

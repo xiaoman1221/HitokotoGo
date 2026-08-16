@@ -1,0 +1,8 @@
+.git
+.idea
+.github
+data
+.env
+*.md
+Dockerfile
+docker-compose.yml

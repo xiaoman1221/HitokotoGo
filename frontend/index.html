@@ -7,40 +7,39 @@
     <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-<div class="top-right-link">
-    <a href="/stats">
-        <span>统计</span>
-    </a>
-    <a href="/docs">
-        <span>文档</span>
-    </a>
-    <a id="repo-link" href="https://github.com/xiaoman1221/HitokotoGo" target="_blank" rel="noopener noreferrer">
-        <span>Code</span>
-        <span>↗</span>
-    </a>
-    <a href="https://www.yhdzz.cn/" target="_blank" rel="noopener noreferrer">
-        <span>博客</span>
-        <span>↗</span>
-    </a>
-</div>
+    <div class="edge" aria-hidden="true">Hitokoto&nbsp;//&nbsp;API&nbsp;v2</div>
 
-<main class="container index-container">
-    <section id="quote-card" class="quote-card">
-        <p id="quote-text" class="quote-text">正在加载一言...</p>
+    <header class="site-header">
+        <a class="wordmark" href="/">Hitokoto<strong>Go</strong></a>
+        <nav class="nav">
+            <a href="/stats"><span>统计</span></a>
+            <a href="/docs"><span>文档</span></a>
+            <a href="https://github.com/xiaoman1221/HitokotoGo" target="_blank" rel="noopener noreferrer"><span>Code</span><span class="arrow">↗</span></a>
+            <a href="https://www.yhdzz.cn/" target="_blank" rel="noopener noreferrer"><span>博客</span><span class="arrow">↗</span></a>
+        </nav>
+    </header>
+
+    <main class="stage">
+        <p id="quote-text" class="quote-text">正在加载一言…</p>
         <div id="quote-meta" class="quote-meta">请稍候</div>
-    </section>
-</main>
+    </main>
 
-<button id="bg-refresh-btn" class="bg-refresh-btn" title="切换背景图">换图</button>
+    <footer class="site-footer">
+        <div class="footer-meta">
+            <span class="mono">HitokotoGo</span>
+            <span class="sep">/</span>
+            <span id="bottom-tip" class="mono">每 {{REFRESH_INTERVAL_SECONDS}} 秒自动刷新一句</span>
+        </div>
+        <button id="bg-refresh-btn" class="btn" type="button">换图</button>
+    </footer>
 
-<div id="bottom-tip" class="bottom-tip">每 {{REFRESH_INTERVAL_SECONDS}} 秒自动刷新一句</div>
-
-<script>
-    var REFRESH_INTERVAL = {{REFRESH_INTERVAL}};
-    var NO_REFRESH = {{NO_REFRESH}};
-    var INITIAL_SENTENCE = {{SENTENCE_JSON}};
-    var BACKGROUND_REFRESH = {{BACKGROUND_REFRESH}};
-</script>
-<script src="/js/main.js"></script>
+    <script>
+        var REFRESH_INTERVAL = {{REFRESH_INTERVAL}};
+        var NO_REFRESH = {{NO_REFRESH}};
+        var INITIAL_SENTENCE = {{SENTENCE_JSON}};
+        var BACKGROUND_REFRESH = {{BACKGROUND_REFRESH}};
+        var BACKGROUND_API = {{BACKGROUND_API}};
+    </script>
+    <script src="/js/main.js"></script>
 </body>
 </html>
