@@ -63,8 +63,8 @@ func main() {
 	}
 	log.Printf("共加载 %d 条句子", libs.TotalSentences())
 
-	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("frontend/css"))))
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
+	http.Handle("/css/", noCache(http.StripPrefix("/css/", http.FileServer(http.Dir("frontend/css")))))
+	http.Handle("/js/", noCache(http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js")))))
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/v2", apiHandler)
@@ -75,6 +75,7 @@ func main() {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 		page, err := os.ReadFile("frontend/stats.html")
 		if err != nil {
 			log.Printf("failed to read stats page: %v", err)
@@ -103,6 +104,14 @@ func main() {
 		log.Println(err.Error())
 		return
 	}
+}
+
+// noCache 让静态资源每次都向后端校验，避免浏览器/CDN 缓存旧版本 JS/CSS。
+func noCache(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		h.ServeHTTP(w, r)
+	})
 }
 
 // backgroundAPI 返回可配置的背景图 API，未配置时使用默认值。

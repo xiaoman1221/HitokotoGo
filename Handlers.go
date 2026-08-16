@@ -141,6 +141,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 // 首页展示
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 
 	page, err := os.ReadFile("frontend/index.html")
 	if err != nil {
@@ -201,6 +202,7 @@ func docsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 	page, err := os.ReadFile("frontend/docs.html")
 	if err != nil {
 		log.Printf("failed to read docs page: %v", err)
