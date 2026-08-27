@@ -1,7 +1,7 @@
 # HitokotoGo
 
 一个基于 Go 实现的轻量级一言（Hitokoto）服务，提供随机句子 API 与统计页面，支持启动时自动更新句子数据。
-[![Powered by OrcaRouter](https://img.shields.io/badge/Powered_by-OrcaRouter-2563eb)](https://www.orcarouter.ai/ref/ref_00ee071bfd29fc8bb954)
+
 ## 功能特性
 
 - 纯 Go 标准库实现，无第三方 Web 框架
@@ -194,3 +194,4 @@ curl http://localhost:8080/v2?c=a
 ## 致谢
 
 - 句子数据来源于 [hitokoto.cn](https://hitokoto.cn)
+- [![Powered by OrcaRouter](https://img.shields.io/badge/Powered_by-OrcaRouter-2563eb)](https://www.orcarouter.ai/ref/ref_00ee071bfd29fc8bb954)
