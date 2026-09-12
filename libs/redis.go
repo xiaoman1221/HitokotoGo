@@ -86,11 +86,15 @@ func CacheSentencesByKey(byKey map[string][]entity.S) error {
 	return nil
 }
 
-// refreshRedisCache 只清空本服务自己的 key 后重新写入，
-// 避免 FlushDB 清空整个 Redis 库（可能与其他应用共用）。
-func refreshRedisCache(byKey map[string][]entity.S) error {
-	keys := make([]string, 0, len(byKey))
+// refreshRedisCache 只清空本服务自己的 key 后重新写入，避免 FlushDB 清空
+// 整个 Redis 库（可能与其他应用共用）。extraCats 为需要一并清理的历史分类
+// key（新版句子包可能移除了某些分类，其旧 key 不在 byKey 中）。
+func refreshRedisCache(byKey map[string][]entity.S, extraCats ...string) error {
+	keys := make([]string, 0, len(byKey)+len(extraCats))
 	for category := range byKey {
+		keys = append(keys, sentenceKey(category))
+	}
+	for _, category := range extraCats {
 		keys = append(keys, sentenceKey(category))
 	}
 	if err := rdb.Del(ctx, keys...).Err(); err != nil {

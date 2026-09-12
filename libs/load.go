@@ -5,49 +5,16 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"path/filepath"
 )
 
-func LoadAllSentences(category string) []entity.S {
-	const (
-		sentencesDir = "data/sentences"
-		allCategory  = "all"
-	)
-
-	if category == "" || category == allCategory {
-		category = allCategory
-	}
-
-	var sentences []entity.S
-
-	dirInfo, err := os.Stat(sentencesDir)
-	if err != nil || !dirInfo.IsDir() {
-		log.Println("句子包目录不存在")
-		return sentences
-	}
-
-	files, err := os.ReadDir(sentencesDir)
+// loadCategorySentences 加载单个分类的句子文件 data/sentences/<key>.json。
+func loadCategorySentences(key string) []entity.S {
+	fileSentences, err := loadSentencesFromFile(filepath.Join("data", "sentences", key+".json"))
 	if err != nil {
-		log.Printf("读取句子包目录失败: %v", err)
-		return sentences
+		return nil
 	}
-
-	targetFileName := category + ".json"
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		if category != allCategory && file.Name() != targetFileName {
-			continue
-		}
-
-		fileSentences, err := loadSentencesFromFile(sentencesDir + "/" + file.Name())
-		if err != nil {
-			continue
-		}
-		sentences = append(sentences, fileSentences...)
-	}
-
-	return sentences
+	return fileSentences
 }
 
 func LoadCategories() []entity.C {

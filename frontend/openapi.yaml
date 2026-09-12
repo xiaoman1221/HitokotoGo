@@ -3,7 +3,7 @@ info:
   title: HitokotoGo API
   description: |
     一言（Hitokoto）API - 随机获取一句句子
-  version: "1.0.4"
+  version: "1.0.6"
   contact:
     name: HitokotoGo
     url: https://hitokoto.cn
@@ -13,7 +13,16 @@ paths:
   /:
     get:
       summary: 首页
-      description: 返回前端首页 HTML
+      description: |
+        返回前端首页 HTML。
+        支持通过 uuid 参数定向展示某一句（此时页面不自动刷新）。
+      parameters:
+        - name: uuid
+          in: query
+          description: 句子 UUID；提供时页面仅展示该句且不自动刷新
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: 成功
@@ -21,6 +30,8 @@ paths:
             text/html:
               schema:
                 type: string
+        "404":
+          description: 路径不存在
   /v2:
     get:
       summary: 随机获取一句句子
@@ -28,7 +39,7 @@ paths:
       parameters:
         - name: c
           in: query
-          description: 分类筛选（如 a、b、c 等）
+          description: 分类筛选（如 a、b、c 等）；不传或为 all 表示全部分类
           required: false
           schema:
             type: string
@@ -39,6 +50,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Sentence"
+        "400":
+          description: 未知分类
+        "404":
+          description: 该分类下暂无句子数据
         "500":
           description: 服务器错误
   /stats:
@@ -55,7 +70,7 @@ paths:
   /stats/data:
     get:
       summary: 统计数据
-      description: 返回句子分类统计数据
+      description: 返回句子分类统计与服务运行状态数据
       responses:
         "200":
           description: 成功
@@ -63,6 +78,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StatsResponse"
+  /docs:
+    get:
+      summary: 接口文档页面
+      description: 返回基于 Swagger UI 的接口文档页面
+      responses:
+        "200":
+          description: 成功
+          content:
+            text/html:
+              schema:
+                type: string
 components:
   schemas:
     Sentence:
@@ -109,9 +135,29 @@ components:
       properties:
         total:
           type: integer
+          description: 句子总数
         bundle_version:
           type: string
+          description: 句子包版本号
         categories:
           type: array
           items:
             $ref: "#/components/schemas/CategoryStat"
+        total_queries:
+          type: integer
+          description: 服务启动以来 /v2 接口累计请求次数
+        active_requests:
+          type: integer
+          description: 当前正在处理中的 /v2 请求数
+        load_1:
+          type: number
+          description: 最近 1 分钟的每分钟请求数均值（即当前 RPM）
+        load_5:
+          type: number
+          description: 最近 5 分钟的每分钟请求数均值
+        load_15:
+          type: number
+          description: 最近 15 分钟的每分钟请求数均值
+        memory_mb:
+          type: number
+          description: 当前进程堆内存占用（MB）
