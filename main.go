@@ -95,12 +95,15 @@ func main() {
 		go startAutoUpdateLoop(time.Hour)
 	}
 
-	log.Println("正在启动服务...")
-	info := os.Getenv("HOST") + ":" + os.Getenv("PORT")
-	log.Println("服务器将在 " + info + " 启动...")
+	srv := &http.Server{
+		Addr:              os.Getenv("HOST") + ":" + os.Getenv("PORT"),
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 
-	err = http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), nil)
-	if err != nil {
+	log.Println("正在启动服务...")
+	log.Println("服务器将在 " + srv.Addr + " 启动...")
+
+	if err := srv.ListenAndServe(); err != nil {
 		log.Println(err.Error())
 		return
 	}
@@ -114,6 +117,9 @@ func noCache(h http.Handler) http.Handler {
 	})
 }
 
+// assetVersion 前端静态资源版本号，注入页面用于缓存破坏；更新前端时同步修改。
+const assetVersion = "1.0.6"
+
 // backgroundAPI 返回可配置的背景图 API，未配置时使用默认值。
 func backgroundAPI() string {
 	api := os.Getenv("BACKGROUND_API")
@@ -123,18 +129,16 @@ func backgroundAPI() string {
 	return api
 }
 
-// injectVars 向静态页面注入公共模板变量（背景图 API）。
+// injectVars 向静态页面注入公共模板变量（背景图 API、资源版本号）。
 func injectVars(content string) string {
 	bgAPI, _ := json.Marshal(backgroundAPI())
 	content = strings.ReplaceAll(content, "{{BACKGROUND_API}}", string(bgAPI))
+	content = strings.ReplaceAll(content, "{{ASSET_VERSION}}", assetVersion)
 	return content
 }
 
 func startAutoUpdateLoop(interval time.Duration) {
-	if !libs.AutoUpdate() {
-		log.Println("自动更新失败，将在下一个运行周期重试")
-	}
-
+	// 首轮更新放在一个周期之后：启动流程已做过版本检查与加载，无需立即重复检查
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

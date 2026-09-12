@@ -27,7 +27,7 @@ func ReloadSentences() error {
 	index := make(map[string]entity.S)
 	var all []entity.S
 	for _, cat := range cats {
-		list := LoadAllSentences(cat.Key)
+		list := loadCategorySentences(cat.Key)
 		byKey[cat.Key] = list
 		all = append(all, list...)
 	}
@@ -37,6 +37,13 @@ func ReloadSentences() error {
 	}
 
 	storeMu.Lock()
+	// 记录被移除的旧分类，用于清理 Redis 中对应的历史 key
+	var removedCats []string
+	for _, old := range categories {
+		if _, ok := byKey[old.Key]; !ok {
+			removedCats = append(removedCats, old.Key)
+		}
+	}
 	categories = cats
 	sentencesByKey = byKey
 	sentenceIndex = index
@@ -46,7 +53,7 @@ func ReloadSentences() error {
 		log.Println("Redis不可用,仅使用内存缓存")
 		return nil
 	}
-	if err := refreshRedisCache(byKey); err != nil {
+	if err := refreshRedisCache(byKey, removedCats...); err != nil {
 		log.Printf("Redis缓存刷新失败,仅使用内存缓存: %v", err)
 	}
 	return nil
@@ -75,6 +82,7 @@ func IsValidCategory(key string) bool {
 }
 
 // GetSentences 返回指定分类（"" 或 "all" 表示全部分类）的句子列表。
+// 返回的是内部切片，调用方只读，不得修改。
 func GetSentences(category string) []entity.S {
 	storeMu.RLock()
 	defer storeMu.RUnlock()

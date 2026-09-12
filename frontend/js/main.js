@@ -4,6 +4,7 @@ const quoteMetaEl = document.getElementById("quote-meta");
 const bottomTipEl = document.getElementById("bottom-tip");
 
 let bgActive = false;
+var refreshTimer;
 
 /* ---------- 背景图：加载 + 明暗采样 ---------- */
 
@@ -44,7 +45,7 @@ async function sampleBrightness(src) {
 }
 
 async function applyBackground(url) {
-    const src = `${url}?t=${Date.now()}`;
+    const src = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
     document.body.style.backgroundImage = `url("${src}")`;
     document.body.classList.add("has-bg");
 
@@ -133,14 +134,16 @@ function updateTip(ms) {
 
 /* ============================================ */
 
+// 打字机按码点迭代，避免 emoji 等代理对字符被拆成两半显示
 function typeText(element, text, callback) {
+    const chars = Array.from(text);
     element.textContent = "";
     let i = 0;
     const interval = typingInterval(text.length);
     const timer = setInterval(() => {
-        element.textContent += text[i];
+        element.textContent += chars[i];
         i++;
-        if (i >= text.length) {
+        if (i >= chars.length) {
             clearInterval(timer);
             if (callback) callback();
         }
@@ -148,16 +151,16 @@ function typeText(element, text, callback) {
 }
 
 function backspaceText(element, callback) {
-    const text = element.textContent;
-    if (!text) {
+    const chars = Array.from(element.textContent);
+    if (chars.length === 0) {
         if (callback) callback();
         return;
     }
-    let i = text.length;
-    const interval = backspaceInterval(text.length);
+    let i = chars.length;
+    const interval = backspaceInterval(chars.length);
     const timer = setInterval(() => {
         i--;
-        element.textContent = text.substring(0, i);
+        element.textContent = chars.slice(0, i).join("");
         if (i <= 0) {
             clearInterval(timer);
             if (callback) callback();
@@ -205,7 +208,7 @@ async function loadSentence() {
         quoteTextEl.textContent = "句子加载失败";
         quoteMetaEl.textContent = "请检查服务或稍后重试";
         console.error(error);
-        if (typeof refreshTimer !== "undefined") clearTimeout(refreshTimer);
+        clearTimeout(refreshTimer);
         refreshTimer = setTimeout(loadSentence, REFRESH_INTERVAL);
     } finally {
         isLoading = false;
@@ -231,8 +234,6 @@ if (INITIAL_SENTENCE && INITIAL_SENTENCE.uuid) {
     quoteTextEl.textContent = "句子未找到";
     quoteMetaEl.textContent = "请检查 UUID 是否正确";
 }
-
-var refreshTimer;
 
 if (NO_REFRESH) {
     if (bottomTipEl) bottomTipEl.style.display = "none";

@@ -18,20 +18,25 @@ import (
 var (
 	totalQueries   atomic.Int64
 	activeRequests atomic.Int64
-	reqTimestamps  []time.Time
-	reqMu          sync.Mutex
+
+	reqMu    sync.Mutex
+	reqSlots = make(map[int64]int64) // unix 秒 → 该秒请求数，窗口外过期桶会被清理
 )
 
-// reqTimestampMax 触发时间戳裁剪的阈值，防止无人访问统计页时数组无限增长。
-const reqTimestampMax = 100000
+// reqWindowSecs 负载统计窗口（与 load_15 一致）；过期桶清理后 map 条目数有界。
+const reqWindowSecs = 15 * 60
+
+// reqSlotsPruneAt 触发清理的条目数阈值（窗口+60s 缓冲的 2 倍），清理均摊 O(1)。
+const reqSlotsPruneAt = (reqWindowSecs + 60) * 2
 
 func trackRequest() {
 	totalQueries.Add(1)
 	activeRequests.Add(1)
+	sec := time.Now().Unix()
 	reqMu.Lock()
-	reqTimestamps = append(reqTimestamps, time.Now())
-	if len(reqTimestamps) > reqTimestampMax {
-		reqTimestamps = trimOldTimestamps(reqTimestamps, time.Now())
+	reqSlots[sec]++
+	if len(reqSlots) > reqSlotsPruneAt {
+		pruneReqSlots(sec)
 	}
 	reqMu.Unlock()
 }
@@ -40,49 +45,35 @@ func finishRequest() {
 	activeRequests.Add(-1)
 }
 
-// trimOldTimestamps 去掉超过 15 分钟的时间戳（reqTimestamps 按时间有序追加）。
-func trimOldTimestamps(ts []time.Time, now time.Time) []time.Time {
-	cutoff := now.Add(-15 * time.Minute)
-	i := 0
-	for i < len(ts) && !ts[i].After(cutoff) {
-		i++
-	}
-	if i == 0 {
-		return ts
-	}
-	return ts[i:]
-}
-
-// loadAverages 返回最近 1/5/15 分钟的每分钟请求数均值，以及当前 RPM。
-func loadAverages() (load1, load5, load15 float64, rpm int) {
-	reqMu.Lock()
-	defer reqMu.Unlock()
-	now := time.Now()
-	cutoff1 := now.Add(-time.Minute)
-	cutoff5 := now.Add(-5 * time.Minute)
-	cutoff15 := now.Add(-15 * time.Minute)
-
-	var recent []time.Time
-	var c1, c5, c15 int
-	for _, t := range reqTimestamps {
-		if t.After(cutoff15) {
-			recent = append(recent, t)
-			c15++
-			if t.After(cutoff5) {
-				c5++
-				if t.After(cutoff1) {
-					c1++
-				}
-			}
+// pruneReqSlots 删除统计窗口之外的过期桶，调用方需持有 reqMu。
+func pruneReqSlots(nowSec int64) {
+	cutoff := nowSec - reqWindowSecs - 60
+	for sec := range reqSlots {
+		if sec < cutoff {
+			delete(reqSlots, sec)
 		}
 	}
-	reqTimestamps = recent
+}
 
-	load1 = float64(c1)
-	load5 = float64(c5) / 5
-	load15 = float64(c15) / 15
-	rpm = c1
-	return
+// loadAverages 返回最近 1/5/15 分钟的每分钟请求数均值。
+func loadAverages() (load1, load5, load15 float64) {
+	nowSec := time.Now().Unix()
+	reqMu.Lock()
+	var c1, c5, c15 int64
+	for sec, n := range reqSlots {
+		if sec > nowSec-60 {
+			c1 += n
+		}
+		if sec > nowSec-5*60 {
+			c5 += n
+		}
+		if sec > nowSec-reqWindowSecs {
+			c15 += n
+		}
+	}
+	pruneReqSlots(nowSec)
+	reqMu.Unlock()
+	return float64(c1), float64(c5) / 5, float64(c15) / 15
 }
 
 // statsHandler
@@ -117,7 +108,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	load1, load5, load15, rpm := loadAverages()
+	load1, load5, load15 := loadAverages()
 
 	resp := map[string]interface{}{
 		"total":           total,
@@ -128,7 +119,6 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 		"load_1":          load1,
 		"load_5":          load5,
 		"load_15":         load15,
-		"rpm":             rpm,
 		"memory_mb":       float64(memStats.Alloc) / 1024 / 1024,
 	}
 
@@ -140,6 +130,10 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 // indexHandler
 // 首页展示
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 
@@ -150,14 +144,14 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 校验刷新间隔，保证注入页面 JS 的永远是合法数字字面量
 	interval := os.Getenv("REFRESH_INTERVAL")
-	if interval == "" {
+	n, err := strconv.Atoi(interval)
+	if err != nil || n <= 0 {
+		n = 5000
 		interval = "5000"
 	}
-	intervalSeconds := interval
-	if n, err := strconv.Atoi(interval); err == nil && n > 0 {
-		intervalSeconds = strconv.Itoa((n + 500) / 1000)
-	}
+	intervalSeconds := strconv.Itoa((n + 500) / 1000)
 
 	bgRefresh := os.Getenv("BACKGROUND_REFRESH")
 	if bgRefresh != "true" {
@@ -209,7 +203,7 @@ func docsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "docs page not found", http.StatusInternalServerError)
 		return
 	}
-	if _, err := w.Write(page); err != nil {
+	if _, err := w.Write([]byte(injectVars(string(page)))); err != nil {
 		log.Printf("failed to write docs response: %v", err)
 	}
 }
@@ -234,7 +228,8 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 
 	sentences := libs.GetSentences(categoryKey)
 	if len(sentences) == 0 {
-		http.Error(w, "No sentences available", http.StatusInternalServerError)
+		// 分类合法但无数据（数据文件缺失或为空），对客户端而言是"找不到资源"
+		http.Error(w, "no sentences in category: "+categoryKey, http.StatusNotFound)
 		return
 	}
 

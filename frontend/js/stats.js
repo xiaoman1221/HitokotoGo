@@ -42,8 +42,9 @@ async function loadStats() {
         const tq = $("total-queries");
         if (tq) tq.textContent = formatNumber(data.total_queries);
 
+        // 实时每分钟请求数与 load_1 同源，直接取用
         const rpm = $("rpm");
-        if (rpm) rpm.textContent = formatNumber(data.rpm);
+        if (rpm) rpm.textContent = formatNumber(Math.round(data.load_1));
 
         const loadEl = $("load");
         if (loadEl) {
