@@ -184,7 +184,8 @@ async function loadSentence() {
     if (isLoading) return;
     isLoading = true;
     try {
-        const response = await fetch("/v2", {
+        // 官方默认 max_length=30；显式放宽以保留首页长句自适应排版
+        const response = await fetch("/v2?min_length=0&max_length=500", {
             method: "GET",
             cache: "no-store"
         });

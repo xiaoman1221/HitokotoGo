@@ -7,12 +7,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 var (
@@ -180,12 +183,125 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func resolveCategoryKey(r *http.Request) string {
-	categoryKey := r.URL.Query().Get("c")
-	if categoryKey == "" {
-		return "all"
+// 官方一言 API 的默认长度区间（闭区间）。
+const (
+	defaultMinLength = 0
+	defaultMaxLength = 30
+)
+
+// callbackNameRe 合法 JSONP 回调名，防止通过回调名注入脚本。
+var callbackNameRe = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$`)
+
+// apiError 按官方一言 API 的错误格式输出（HTTP status + JSON body）。
+func apiError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(struct {
+		Status  int        `json:"status"`
+		Message string     `json:"message"`
+		Data    []struct{} `json:"data"`
+		TS      int64      `json:"ts"`
+	}{Status: status, Message: message, Data: []struct{}{}, TS: time.Now().UnixMilli()})
+}
+
+// parseLengthParam 解析长度参数；非法值按官方行为忽略并回退默认值，负值按 0 处理。
+func parseLengthParam(raw string, def int) int {
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return def
 	}
-	return categoryKey
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// encodeResponseBody 按 charset 参数转码响应体，返回转码后的字节与 charset 名。
+// charset=gbk 时转 GBK，转码失败（含 GBK 外字符）回退 UTF-8。
+func encodeResponseBody(data []byte, charset string) ([]byte, string) {
+	if charset == "gbk" {
+		if out, err := simplifiedchinese.GBK.NewEncoder().Bytes(data); err == nil {
+			return out, "gbk"
+		}
+	}
+	return data, "utf-8"
+}
+
+// apiHandler 随机获取句子，参数对标官方一言 API（developer.hitokoto.cn/sentence）：
+// c（可重复多选）、min_length、max_length、encode（text/json/js）、
+// callback（JSONP）、select（配合 js）、charset（utf-8/gbk）。
+func apiHandler(w http.ResponseWriter, r *http.Request) {
+	trackRequest()
+	defer finishRequest()
+
+	query := r.URL.Query()
+
+	minLength := parseLengthParam(query.Get("min_length"), defaultMinLength)
+	maxLength := parseLengthParam(query.Get("max_length"), defaultMaxLength)
+	if maxLength < minLength {
+		apiError(w, http.StatusBadRequest, "`max_length` 不能小于 `min_length`！")
+		return
+	}
+
+	sentence, ok := libs.SelectRandom(query["c"], minLength, maxLength)
+	if !ok {
+		apiError(w, http.StatusBadRequest, "很抱歉，没有分类有句子符合长度区间。")
+		return
+	}
+
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	charset := query.Get("charset")
+	switch query.Get("encode") {
+	case "text":
+		body, cs := encodeResponseBody([]byte(sentence.Hitokoto), charset)
+		w.Header().Set("Content-Type", "text/plain; charset="+cs)
+		_, _ = w.Write(body)
+	case "js":
+		writeAPIClientJS(w, sentence.Hitokoto, query.Get("select"), charset)
+	default: // json 及其他值（官方行为：回退 JSON）
+		writeAPIJSON(w, sentence, query.Get("callback"), charset)
+	}
+}
+
+// writeAPIClientJS 输出官方 encode=js 格式：自执行函数把句子写入 select 指定的元素。
+func writeAPIClientJS(w http.ResponseWriter, text, selector, charset string) {
+	if selector == "" {
+		selector = ".hitokoto"
+	}
+	// 选择器与正文以 JSON 字符串字面量内插，避免拼接注入
+	sel, _ := json.Marshal(selector)
+	txt, _ := json.Marshal(text)
+	script := "(function hitokoto(){var hitokoto=" + string(txt) +
+		";var dom=document.querySelector(" + string(sel) +
+		");Array.isArray(dom)?dom[0].innerText=hitokoto:dom.innerText=hitokoto;})()"
+	body, cs := encodeResponseBody([]byte(script), charset)
+	w.Header().Set("Content-Type", "application/javascript; charset="+cs)
+	_, _ = w.Write(body)
+}
+
+// writeAPIJSON 输出 JSON；callback 合法时输出官方 JSONP 格式：;cb("<json>");。
+func writeAPIJSON(w http.ResponseWriter, sentence entity.S, callback, charset string) {
+	body, err := json.Marshal(sentence)
+	if err != nil {
+		log.Printf("error encoding sentence: %v", err)
+		apiError(w, http.StatusInternalServerError, "服务器繁忙，请稍后再试。")
+		return
+	}
+	contentType := "application/json"
+	if callback != "" && callbackNameRe.MatchString(callback) {
+		// 官方 JSONP 把整个 JSON 作为字符串字面量传给回调函数
+		wrapped, err := json.Marshal(string(body))
+		if err != nil {
+			apiError(w, http.StatusInternalServerError, "服务器繁忙，请稍后再试。")
+			return
+		}
+		body = []byte(";" + callback + "(" + string(wrapped) + ");")
+		contentType = "application/javascript"
+	}
+	out, cs := encodeResponseBody(body, charset)
+	w.Header().Set("Content-Type", contentType+"; charset="+cs)
+	_, _ = w.Write(out)
 }
 
 // docsHandler
@@ -205,40 +321,5 @@ func docsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, err := w.Write([]byte(injectVars(string(page)))); err != nil {
 		log.Printf("failed to write docs response: %v", err)
-	}
-}
-
-// apiHandler
-// 随机获取句子（支持 ?c= 分类筛选）
-func apiHandler(w http.ResponseWriter, r *http.Request) {
-	trackRequest()
-	defer finishRequest()
-
-	categoryKey := resolveCategoryKey(r)
-
-	if categoryKey != "all" && !libs.IsValidCategory(categoryKey) {
-		http.Error(w, "unknown category: "+categoryKey, http.StatusBadRequest)
-		return
-	}
-
-	if sentence := libs.GetRandomSentenceFromCache(categoryKey); sentence != nil {
-		writeJSON(w, sentence)
-		return
-	}
-
-	sentences := libs.GetSentences(categoryKey)
-	if len(sentences) == 0 {
-		// 分类合法但无数据（数据文件缺失或为空），对客户端而言是"找不到资源"
-		http.Error(w, "no sentences in category: "+categoryKey, http.StatusNotFound)
-		return
-	}
-
-	writeJSON(w, sentences[libs.RandInt(0, len(sentences))])
-}
-
-func writeJSON(w http.ResponseWriter, v interface{}) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("error encoding response: %v", err)
 	}
 }

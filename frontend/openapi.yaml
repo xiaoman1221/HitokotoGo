@@ -3,7 +3,7 @@ info:
   title: HitokotoGo API
   description: |
     一言（Hitokoto）API - 随机获取一句句子
-  version: "1.0.6"
+  version: "1.0.7"
   contact:
     name: HitokotoGo
     url: https://hitokoto.cn
@@ -35,25 +35,75 @@ paths:
   /v2:
     get:
       summary: 随机获取一句句子
-      description: 从缓存或全部句子中随机获取一句
+      description: |
+        从缓存或全部句子中随机获取一句。
+        参数对标官方一言 API（developer.hitokoto.cn/sentence）。
       parameters:
         - name: c
           in: query
-          description: 分类筛选（如 a、b、c 等）；不传或为 all 表示全部分类
+          description: 句子分类，可重复多选（如 ?c=a&c=c）；未传或为 all 表示全部分类
           required: false
           schema:
             type: string
+        - name: min_length
+          in: query
+          description: 句子最小长度（包含），默认 0；非法值忽略
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: max_length
+          in: query
+          description: 句子最大长度（包含），默认 30；非法值忽略
+          required: false
+          schema:
+            type: integer
+            default: 30
+        - name: encode
+          in: query
+          description: 返回编码；json（默认，其他值回退 json）/ text / js
+          required: false
+          schema:
+            type: string
+            enum: [json, text, js]
+        - name: callback
+          in: query
+          description: JSONP 回调函数名，输出 ;callback("<json>"); 格式
+          required: false
+          schema:
+            type: string
+        - name: select
+          in: query
+          description: CSS 选择器，配合 encode=js 使用，默认 .hitokoto
+          required: false
+          schema:
+            type: string
+        - name: charset
+          in: query
+          description: 响应体编码，utf-8（默认）/ gbk
+          required: false
+          schema:
+            type: string
+            enum: [utf-8, gbk]
       responses:
         "200":
-          description: 成功
+          description: 成功；encode=json（默认）返回 Sentence，encode=text 返回纯文本，encode=js/callback 返回 JavaScript
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Sentence"
+            text/plain:
+              schema:
+                type: string
+            application/javascript:
+              schema:
+                type: string
         "400":
-          description: 未知分类
-        "404":
-          description: 该分类下暂无句子数据
+          description: 参数错误或无符合条件的句子（未知分类、长度区间无结果、min_length > max_length）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "500":
           description: 服务器错误
   /stats:
@@ -130,6 +180,22 @@ components:
           type: string
         count:
           type: integer
+    ApiError:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: HTTP 状态码
+        message:
+          type: string
+          description: 错误描述
+        data:
+          type: array
+          items: {}
+          description: 恒为空数组
+        ts:
+          type: integer
+          description: 错误产生的毫秒时间戳
     StatsResponse:
       type: object
       properties:

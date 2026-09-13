@@ -103,8 +103,8 @@ func refreshRedisCache(byKey map[string][]entity.S, extraCats ...string) error {
 	return CacheSentencesByKey(byKey)
 }
 
-// GetRandomSentenceFromCache 从指定分类的 Redis Set 中随机取一条。
-func GetRandomSentenceFromCache(category string) *entity.S {
+// getRandomSentenceFromCache 从指定分类的 Redis Set 中随机取一条。
+func getRandomSentenceFromCache(category string) *entity.S {
 	if rdb == nil {
 		return nil
 	}

@@ -4,6 +4,7 @@ import (
 	"HitokotoGo/entity"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 )
 
@@ -13,7 +14,37 @@ var (
 	categories     []entity.C
 	sentencesByKey map[string][]entity.S
 	sentenceIndex  map[string]entity.S
+	// indexByKey 每个分类的长度索引（按长度升序的下标切片 + 最大句子长度），
+	// 支撑 O(log n) 的长度区间随机查询。
+	indexByKey map[string]*categoryIndex
 )
+
+type categoryIndex struct {
+	byLength []int
+	maxLen   int
+}
+
+// buildLengthIndex 返回按句子长度升序排序的下标切片。
+func buildLengthIndex(list []entity.S) []int {
+	byLength := make([]int, len(list))
+	for i := range byLength {
+		byLength[i] = i
+	}
+	sort.SliceStable(byLength, func(a, b int) bool {
+		return list[byLength[a]].Length < list[byLength[b]].Length
+	})
+	return byLength
+}
+
+func maxSentenceLength(list []entity.S) int {
+	maxLen := 0
+	for i := range list {
+		if list[i].Length > maxLen {
+			maxLen = list[i].Length
+		}
+	}
+	return maxLen
+}
 
 // ReloadSentences 从磁盘重新加载全部分类与句子数据到内存，并刷新 Redis 缓存。
 // 在启动时与每次句子包更新后调用。
@@ -36,6 +67,12 @@ func ReloadSentences() error {
 		index[all[i].Uuid] = all[i]
 	}
 
+	// 为每个分类构建长度索引（含 all）
+	idx := make(map[string]*categoryIndex, len(byKey))
+	for key, list := range byKey {
+		idx[key] = &categoryIndex{byLength: buildLengthIndex(list), maxLen: maxSentenceLength(list)}
+	}
+
 	storeMu.Lock()
 	// 记录被移除的旧分类，用于清理 Redis 中对应的历史 key
 	var removedCats []string
@@ -47,6 +84,7 @@ func ReloadSentences() error {
 	categories = cats
 	sentencesByKey = byKey
 	sentenceIndex = index
+	indexByKey = idx
 	storeMu.Unlock()
 
 	if rdb == nil && !InitRedis() {
@@ -69,16 +107,6 @@ func GetCategories() []entity.C {
 	out := make([]entity.C, len(categories))
 	copy(out, categories)
 	return out
-}
-
-// IsValidCategory 判断分类 key 是否存在。
-func IsValidCategory(key string) bool {
-	for _, c := range GetCategories() {
-		if c.Key == key {
-			return true
-		}
-	}
-	return false
 }
 
 // GetSentences 返回指定分类（"" 或 "all" 表示全部分类）的句子列表。

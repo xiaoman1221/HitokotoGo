@@ -94,10 +94,16 @@ Docker 镜像拉取（如 `redis:7-alpine`）需在 Docker daemon 中配置 regi
 
 ### 随机获取句子
 
-**接口地址：** `GET /v2`
+**接口地址：** `GET /v2`（参数对标官方一言 API：[developer.hitokoto.cn/sentence](https://developer.hitokoto.cn/sentence/)）
 
 **请求参数：**
-- `c` (可选): 句子分类 key，不传则从全部分类中随机
+- `c` (可选): 句子分类 key，可重复多选（如 `?c=a&c=c`），未传则从全部分类中随机；未知分类不产生候选
+- `min_length` (可选): 句子最小长度（包含），默认 `0`
+- `max_length` (可选): 句子最大长度（包含），默认 `30`
+- `encode` (可选): 返回编码，`json`（默认，其他值回退 json）/ `text` / `js`
+- `callback` (可选): JSONP 回调函数名，返回 `;callback("<json>");`
+- `select` (可选): CSS 选择器，配合 `encode=js` 使用，默认 `.hitokoto`
+- `charset` (可选): 返回编码，`utf-8`（默认）/ `gbk`
 
 **示例：**
 ```bash
@@ -106,6 +112,25 @@ curl http://localhost:8080/v2
 
 # 获取动画分类句子
 curl http://localhost:8080/v2?c=a
+
+# 多分类随机
+curl "http://localhost:8080/v2?c=a&c=c"
+
+# 指定长度区间（闭区间）
+curl "http://localhost:8080/v2?min_length=10&max_length=20"
+
+# 纯文本输出
+curl "http://localhost:8080/v2?encode=text"
+```
+
+**错误响应（HTTP 400）：**
+```json
+{
+  "status": 400,
+  "message": "`max_length` 不能小于 `min_length`！",
+  "data": [],
+  "ts": 1789269080841
+}
 ```
 
 **返回示例：**

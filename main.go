@@ -118,7 +118,7 @@ func noCache(h http.Handler) http.Handler {
 }
 
 // assetVersion 前端静态资源版本号，注入页面用于缓存破坏；更新前端时同步修改。
-const assetVersion = "1.0.6"
+const assetVersion = "1.0.7"
 
 // backgroundAPI 返回可配置的背景图 API，未配置时使用默认值。
 func backgroundAPI() string {
